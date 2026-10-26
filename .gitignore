@@ -13,7 +13,10 @@ venv/
 
 # Local data, checkpoints, and run outputs (not source)
 data/
-results/
+# Local run outputs. The published tables are the exception.
+results/*
+!results/published/
+!results/published/**
 /figures/
 logs/
 demo/artifacts/

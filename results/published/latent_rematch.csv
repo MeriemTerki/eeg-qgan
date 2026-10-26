@@ -1,0 +1,6 @@
+arm,parameters,latent_mmd2_mean,latent_mmd2_sd,role
+gaussian_mixture,,0.00085,0.00049,density reference; not capacity-matched
+hybrid_style_qgan,704,0.0158,0.0025,tested generator; 82 percent of parameters are the classical readout
+mlp_1354,1354,0.0214,0.0033,unmatched classical network
+capacity_matched_twin,709,0.0883,0.0096,fair classical control
+mlp_12480,12480,0.905,0.057,failed to converge on 4 of 4 folds

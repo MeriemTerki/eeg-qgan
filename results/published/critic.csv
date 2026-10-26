@@ -1,0 +1,3 @@
+critic,hybrid_mmd2_mean,hybrid_mmd2_sd,twin_mmd2_mean,twin_mmd2_sd,closer_arm
+16_16,0.073,0.026,0.058,0.010,capacity_matched_twin
+128_128,0.017,0.002,0.088,0.003,hybrid

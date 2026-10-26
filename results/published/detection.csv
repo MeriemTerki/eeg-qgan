@@ -1,0 +1,5 @@
+arm,auroc_mean,auroc_sd,auprc_mean,auprc_sd,mcc_mean,mcc_sd,delta_auroc,delta_auroc_ci_excludes_zero
+real_only,0.821,0.057,0.386,0.120,0.356,0.076,0,
+hybrid,0.822,0.052,0.397,0.120,0.365,0.079,0.0004,false
+capacity_matched_twin,0.827,0.059,0.409,0.117,0.385,0.071,0.005,true
+gaussian_mixture,0.832,0.044,0.397,0.118,0.364,0.081,0.010,true
