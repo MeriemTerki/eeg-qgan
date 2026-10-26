@@ -1,8 +1,9 @@
-"""Latent-space quantum and classical generative modelling for scarce seizure EEG.
+"""Capacity-matched latent generative models for multichannel seizure EEG.
 
-This package consolidates eleven scattered experiment directories into one library.
-See MIGRATION.md for the mapping from the old layout, and CHANGES_FROM_AUDIT.md for
-the corrections applied to the pipeline.
+One library replaces the earlier forked experiment directories. Each experiment is
+a study file under ``configs/studies``. The defaults are the post-audit protocol
+described in ``docs/PROTOCOL.md``. ``AUDIT_FIXES.md`` records the failure each
+default closes, and ``MIGRATION.md`` maps the old entry points onto this package.
 """
 
 __version__ = "1.0.0"

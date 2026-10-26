@@ -1,0 +1,22 @@
+cff-version: 1.2.0
+title: "eeg-qgan: capacity-matched latent generative models for multichannel seizure EEG"
+message: "If you use this software, please cite it."
+type: software
+authors:
+  - family-names: Terki
+    given-names: Meriem
+    affiliation: "Higher School of Computer Science, 8 Mai 1945, Sidi Bel Abbes"
+repository-code: "https://github.com/MeriemTerki/eeg_qgan"
+abstract: >-
+  A hybrid Style-qGAN and classical controls share one frozen autoencoder,
+  one critic, and one parameter budget on TUH-SZ windows. Latent fidelity,
+  decoded signal fidelity, and seizure detection are scored separately.
+  The defaults implement the post-audit evaluation protocol.
+version: 1.0.0
+date-released: "2026-10-26"
+keywords:
+  - electroencephalography
+  - seizure detection
+  - generative models
+  - quantum machine learning
+  - TUH-SZ
