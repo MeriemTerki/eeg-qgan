@@ -1,9 +1,7 @@
 """Capacity-matched latent generative models for multichannel seizure EEG.
 
-One library replaces the earlier forked experiment directories. Each experiment is
-a study file under ``configs/studies``. The defaults are the post-audit protocol
-described in ``docs/PROTOCOL.md``. ``AUDIT_FIXES.md`` records the failure each
-default closes, and ``MIGRATION.md`` maps the old entry points onto this package.
+Each experiment is a study file under ``configs/studies``. The evaluation rules
+are described in ``docs/PROTOCOL.md``.
 """
 
 __version__ = "1.0.0"

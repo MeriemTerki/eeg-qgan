@@ -1,5 +1,4 @@
-# Fastest end-to-end check on real BinaryClassification_Data (Narval).
-# Uses the supervisor protocol: train vs holdout folders.
+# Fast end-to-end check. Outer folds are train versus the official holdouts.
 
 n_seeds: 1
 n_folds: 2

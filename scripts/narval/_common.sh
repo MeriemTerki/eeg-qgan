@@ -46,13 +46,11 @@ python -c "import scipy, sklearn" || {
   exit 1
 }
 
-# Data root: set DATA_ROOT on the mrmterki login before submit.py.
-# Do not rely on /scratch/linah03 unless that path is still group-readable.
+# Data root: export DATA_ROOT before submitting, or place the corpus under $SCRATCH.
 if [[ -z "${DATA_ROOT:-}" ]]; then
   for cand in \
     "${SCRATCH}/EpilepticSeizureProject/Dataset/THUSZ/edf/segment_5_eeg_all/BinaryClassification_Data" \
-    "${SCRATCH}/BinaryClassification_Data" \
-    /scratch/linah03/EpilepticSeizureProject/Dataset/THUSZ/edf/segment_5_eeg_all/BinaryClassification_Data
+    "${SCRATCH}/BinaryClassification_Data"
   do
     if [[ -d "$cand" ]]; then
       DATA_ROOT="$cand"
@@ -62,7 +60,7 @@ if [[ -z "${DATA_ROOT:-}" ]]; then
 fi
 if [[ -z "${DATA_ROOT:-}" ]]; then
   echo "ERROR: DATA_ROOT is not set and no BinaryClassification_Data directory was found."
-  echo "On mrmterki@narval1 export DATA_ROOT to your copy of the TUH data."
+  echo "Export DATA_ROOT to the BinaryClassification directory of TUH-SZ."
   exit 1
 fi
 export DATA_ROOT

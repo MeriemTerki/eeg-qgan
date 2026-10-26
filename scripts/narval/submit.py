@@ -38,8 +38,7 @@ sys.path.insert(0, str(REPO_ROOT))
 
 from eeg_qgan.config import list_studies, load_config  # noqa: E402
 
-# SLURM allocation (not the login user). Override with --account or CC_ACCOUNT.
-# mrmterki is on def-khenni_cpu / def-khenni_gpu, not the unsplit def-khenni name.
+# SLURM allocation. Override with --account or CC_ACCOUNT.
 DEFAULT_ACCOUNT = "def-khenni_cpu"
 
 
@@ -304,7 +303,7 @@ def main() -> int:
     data_root = os.environ.get("DATA_ROOT", "")
     output_root = os.environ.get("OUTPUT_ROOT", "")
     print(f"study        {args.study}")
-    print(f"user         {os.environ.get('USER', '?')}  (must be mrmterki, not linah03)")
+    print(f"user         {os.environ.get('USER', '?')}")
     print(f"account      {args.account}")
     print(f"arms         {', '.join(cfg['generator_arms'])}")
     print(f"seeds/folds  {cfg['n_seeds']} x {cfg['n_folds']}")

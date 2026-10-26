@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Create a small synthetic dataset in the on-disk layout the loader expects.
 
-Default layout matches BinaryClassification_Data under ``split_mode: predefined``
-(supervisor protocol): train / dev / eval folders with distinct patients, so outer
-evaluation is patient-disjoint without per-window patient sidecars.
+Default layout matches BinaryClassification_Data under ``split_mode: predefined``:
+train / dev / eval folders with distinct patients, so outer evaluation is
+patient-disjoint without per-window patient sidecars.
 
 Pass ``--layout grouped_cv`` to write a flat seizure/non_seizure tree with
 ``*_patients.npy`` sidecars for the alternative GroupKFold path.

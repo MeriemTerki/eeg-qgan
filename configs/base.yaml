@@ -24,14 +24,10 @@ sample_length: 256
 target_fs: 200
 n_channels: 22
 
-# Supervisor protocol for BinaryClassification_Data (Jun 2022):
-#   "these data are processed based on the predefined data structure provided by
-#    the original/main dataset, so they are patient-wise split, as long as you use
-#    train for training and the others for testing."
-# Outer folds are therefore train vs dev and train vs eval. Per-window patient
-# sidecars are not required for that claim. Inner generator train/select/report
-# splits still group by batch file so one batch cannot leak into selection and
-# reporting at once.
+# Outer folds are the official TUH train/dev and train/eval partitions.
+# They are patient-disjoint by the corpus construction. Per-window patient
+# sidecars are required only for split_mode: grouped_cv.
+# Inner generator splits are train, checkpoint selection, and reporting.
 #
 # Set split_mode: grouped_cv only if you have per-window *_patients.npy sidecars
 # and want StratifiedGroupKFold inside a single directory.
@@ -40,28 +36,25 @@ min_group_size: 1
 n_folds: 2
 
 data:
-  root: /scratch/linah03/EpilepticSeizureProject/Dataset/THUSZ/edf/segment_5_eeg_all/BinaryClassification_Data
+  root: null
   split_mode: predefined
   holdouts: [dev, eval]
   max_batch_files: null
   max_segments_per_batch: 100
   max_per_class: null
-  # Daubechies-6 soft-threshold denoising (Implementation chapter). Applied
-  # identically to every arm. Requires PyWavelets; the loader raises if this is
-  # true and the package is missing, so the manuscript and the code cannot disagree.
+  # Daubechies-6 soft-threshold denoising, applied identically to every arm.
   denoise: true
   normalize: true
   # Scope of the robust [-1, 1] rescaling.
   #   window    : one percentile range per channel per 1.28 s window. Every window is
   #               stretched to fill the range, so a 400 uV seizure burst and quiet
   #               background become indistinguishable in amplitude, and relative
-  #               amplitude across channels is gone too. This is what ae_v5b/ae_v5c ran.
+  #               amplitude across channels is gone too.
   #   recording : one range per batch file, shared across channels. Between-subject and
   #               between-amplifier scale differences are still removed, but amplitude
   #               contrast inside a recording survives. No statistic crosses a recording
   #               boundary, so the outer patient-disjoint split is unaffected.
-  # Left at 'window' so saved ae_v5c generative results stay reproducible; the detection
-  # studies set 'recording' explicitly. Changing it invalidates saved AE checkpoints.
+  # Detection studies set 'recording' explicitly.
   normalize_scope: window
   require_patient_groups: false
 

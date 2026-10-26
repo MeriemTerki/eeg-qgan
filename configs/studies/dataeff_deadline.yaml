@@ -1,8 +1,0 @@
-# Data-efficiency on the CURRENT detection protocol (not the old 1.28 s rematch).
-# Same stack as paper_style_cpu_deadline; only generator train_fraction changes.
-# Fraction 1.0 is the running paper_style job — submit 0.25 and 0.5 only.
-
-extends: paper_style_cpu_deadline
-
-latent:
-  train_fraction: 0.5
