@@ -1,13 +1,15 @@
-# Published results
+# Published tables
 
-Means and standard deviations over four seed-by-fold records on the official TUH-SZ holdouts (`train` against `dev`, and `train` against `eval`). Latent MMD² is lower when the generated codes are closer to real seizure codes. Detection is scored on real holdout clips. The hybrid ΔAUROC interval is [−0.0039, +0.0046].
+Statistics for the comparison reported in the repository README. Each mean and standard deviation is computed over four seed × fold records (`train`/`dev` and `train`/`eval`, two seeds). Latent MMD² is lower when generated codes are closer to real seizure codes. Detection metrics are computed on real holdout clips. The hybrid ΔAUROC interval is \([-0.0039, +0.0046]\).
 
-| File | Content |
+The underlying jobs ran on Narval (Digital Research Alliance of Canada) as described in [docs/REPRODUCING.md](../../docs/REPRODUCING.md).
+
+| File | Contents |
 | --- | --- |
-| `latent_rematch.csv` | Capacity comparison, including the unmatched controls |
-| `entanglement.csv` | Product, linear, ring, and full circuits |
+| `latent_rematch.csv` | Latent MMD² and parameter counts, including unmatched controls |
+| `detection.csv` | AUROC, AUPRC, MCC, and paired ΔAUROC |
 | `decoded.csv` | Distances after the shared decoder |
-| `detection.csv` | AUROC, AUPRC, MCC, and the paired AUROC change |
-| `critic.csv` | Default critic and the thin-critic control |
+| `entanglement.csv` | Product, linear, ring, and full topologies |
+| `critic.csv` | Default critic \([128,128]\) and thin critic \([16,16]\) |
 
-The corresponding figures are in `docs/figures/`.
+Figures corresponding to the main comparison are `docs/figures/pipeline.png` and `docs/figures/latent_and_detection.png`.

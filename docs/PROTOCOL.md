@@ -1,37 +1,62 @@
 # Evaluation protocol
 
-The numbers in `results/published` were produced on Narval, a national cluster of the Digital Research Alliance of Canada (Alliance; formerly Compute Canada). Training ran as SLURM jobs on compute nodes. A personal computer was used to prepare the code and to read the finished tables, not to train the models. How to repeat that launch is in [REPRODUCING.md](REPRODUCING.md).
+This note specifies the protocol implemented by `configs/base.yaml` and used for the tables in `results/published`.
 
-## Signal
+## 1. Computing environment
 
-Each example is a window of scalp EEG, 22 channels by 256 samples, at 200 Hz (1.28 s). Every model sees the same preprocessing: a Daubechies-6 soft threshold, then a map of the amplitudes into \([-1, 1]\).
+Reported training was performed on Narval, a national cluster of the Digital Research Alliance of Canada (Alliance; formerly Compute Canada), under SLURM.
 
-Detection does not use that window on its own. Eight contiguous windows form one clip of 10.24 s. Synthetic clips may be mixed into detector training. The detection numbers are computed on real holdout clips.
+| Component | Resource |
+| --- | --- |
+| Autoencoder | One GPU |
+| Generators, including the hybrid circuit | CPU; PennyLane analytic state-vector simulation |
+| Detector | One GPU |
+| Corpus and job outputs | Project scratch (`$SCRATCH`) |
 
-## Split
+The circuit is not executed on quantum hardware. Job submission is described in [REPRODUCING.md](REPRODUCING.md).
 
-The outer split is the official corpus partition. Models train on `train` and are tested on `dev` or on `eval`. Those folders do not share patients.
+## 2. Data
 
-Inside a training fold, the generator data are split three ways: fitting, checkpoint selection, and reporting. The checkpoint is the step with the lowest latent distance on the selection split. The distance in a table is measured on the reporting split.
+Inputs are multichannel scalp EEG windows
 
-## Representation
+\[
+x \in \mathbb{R}^{22 \times 256},
+\]
 
-A convolutional autoencoder maps a window to a code in \((-1, 1)^{64}\) and back. It is trained first and then frozen. Every generator uses that same encoder and decoder. A fold is kept only when the normalised reconstruction error on held-out training windows is at most 0.55.
+sampled at 200 Hz (1.28 s), taken from the TUH Seizure Corpus in the BinaryClassification layout. Preprocessing is identical for every model: Daubechies-6 soft-threshold denoising, followed by a robust rescaling into \([-1, 1]\).
 
-On Narval the autoencoder is the stage that requests a GPU.
+Detection operates on a longer clip. Eight contiguous windows are concatenated to 10.24 s. Synthetic clips may be added to the detector training set. They are excluded from the reported test set.
 
-## Generators
+## 3. Partition
 
-The hybrid generator is a data re-uploading circuit on eight qubits. Each qubit is read out by an analytic Pauli-\(Z\) expectation, and a linear map expands those eight values to 64 dimensions. The circuit is simulated. It does not run on a quantum processor, and it does not request a GPU.
+**Outer split.** Training uses the official `train` folder. Testing uses `dev` or `eval`. The folders are patient-disjoint by the corpus release.
 
-The classical twin has the same total number of parameters as the hybrid model. A Gaussian mixture is fit to real codes in the same coordinates. It is a density reference. It is not sized to the hybrid budget.
+**Inner split.** Within each training fold, generator examples are divided into three disjoint subsets:
 
-All adversarial arms share one Wasserstein critic, one learning rate, and one step budget. Selection and reporting use an unbiased squared maximum mean discrepancy, with the two sample sizes matched.
+1. parameter updates;
+2. checkpoint selection;
+3. reported latent distance.
 
-## Detection
+The retained checkpoint minimises latent distance on subset 2. Published distances are computed on subset 3.
 
-The detector is a spectrogram model with bidirectional recurrent layers. It is trained on a GPU node. Its primary score is the area under the receiver operating characteristic on real holdout clips. The area under the precision–recall curve and the Matthews correlation are reported with it. Accuracy is not the score used to rank models.
+## 4. Models
 
-## How to read a row
+**Autoencoder.** A convolutional autoencoder maps \(x\) to \(z \in (-1, 1)^{64}\) and reconstructs \(\hat{x}\). It is trained first and then frozen. A fold is retained only if validation normalised mean squared error is at most 0.55. All generators share this encoder and this decoder.
 
-A latent distance compares codes. A decoded distance compares waveforms after the frozen decoder. A detection score compares classifiers on real clips. A result at one of these stages is not rewritten as a result at another.
+**Hybrid generator.** An eight-qubit data re-uploading circuit. The readout is the vector of analytic Pauli-\(Z\) expectations, followed by a linear map \(8 \to 64\). The parameter count is 704, of which 128 are circuit angles and 576 are classical readout weights.
+
+**Capacity-matched twin.** A classical generator sized to the hybrid total (709 parameters).
+
+**Gaussian mixture.** Fit in the same latent coordinates, with no adversarial critic. It is a density reference and is not capacity-matched.
+
+Adversarial arms share the critic architecture, the learning rate, and the number of generator steps. The critic objective is the Wasserstein distance with gradient penalty.
+
+## 5. Metrics
+
+**Level 1 — latent fidelity.** Unbiased squared maximum mean discrepancy between generated and real holdout codes, with matched sample sizes. Lower is closer.
+
+**Level 2 — decoded fidelity.** Distances on the reconstructed windows (autocorrelation, cross-channel error, spectral error, sliced Wasserstein, Kolmogorov–Smirnov). Lower is closer.
+
+**Level 3 — detection.** Area under the ROC curve on real holdout clips is the primary endpoint. Area under the precision–recall curve and the Matthews correlation coefficient are reported alongside it. Accuracy is recorded and is not used for ranking.
+
+A Level 1 difference is not reported as a Level 2 or Level 3 difference.

@@ -1,85 +1,91 @@
-# Reproducing the runs
+# Reproduction on Narval (Alliance Canada)
 
-The published tables were not produced on a laptop. They were produced on **Narval**, a national high-performance cluster provided by the Digital Research Alliance of Canada (Alliance; formerly Compute Canada). Jobs are scheduled with SLURM. The corpus and the outputs reside on the scratch filesystem. The code and the Python environment reside on the login account.
+The tables in `results/published` were obtained from SLURM jobs on **Narval**, operated for the Digital Research Alliance of Canada (Alliance; formerly Compute Canada). They were not obtained from a local workstation.
 
-A local machine is enough for the tests and for a dry run. It is not the machine that trained the autoencoder, the generators, or the detector.
+Execute sections 1–4 on a Narval **login node**. Training itself is dispatched to compute nodes.
 
-| Stage | Where it ran | Hardware |
+| Workload | Node | Resource request |
 | --- | --- | --- |
-| Environment and job submission | Narval login node | — |
-| Autoencoder | Narval compute node | GPU |
-| Hybrid circuit and classical generators | Narval compute node | CPU (state-vector simulation) |
-| Detector | Narval compute node | GPU |
-| Tests and `smoke --dry-run` | any machine | CPU |
+| Environment creation, `sbatch` | Login | — |
+| Autoencoder | Compute | 1 GPU |
+| Generators (circuit and classical) | Compute | CPU |
+| Detector | Compute | 1 GPU |
+| Unit tests, `smoke --dry-run` | Workstation | CPU only; does not reproduce the tables |
 
-## 1. Log in and place the code
-
-Connect to a Narval login node and put this repository where the job scripts expect it, by default `$HOME/eeg_qgan`.
+## 1. Obtain the code
 
 ```bash
-ssh <user>@narval.alliancecan.ca
-cd $HOME
+ssh <username>@narval.alliancecan.ca
+cd "$HOME"
 git clone https://github.com/MeriemTerki/eeg_qgan.git
 cd eeg_qgan
 ```
 
-## 2. Create the environment once
+The submission scripts assume the repository is at `$HOME/eeg_qgan`.
 
-Run this on the login node, not inside a compute job. The script loads `python/3.11` and `scipy-stack`, builds a virtual environment under `$SCRATCH/venvs/eeg_qgan`, and installs the package. Alliance nodes prefer the cluster wheelhouse over a source build.
+## 2. Install the environment
+
+Run once on the login node. `scripts/narval/setup_env.sh` loads `python/3.11` and `scipy-stack`, creates `$SCRATCH/venvs/eeg_qgan` from the cluster wheelhouse, and installs this package.
 
 ```bash
 bash scripts/narval/setup_env.sh
-source $SCRATCH/venvs/eeg_qgan/bin/activate
+source "$SCRATCH/venvs/eeg_qgan/bin/activate"
 python -c "import eeg_qgan, torch, pennylane, pywt; print(eeg_qgan.__version__)"
 python scripts/validate_studies.py
 ```
 
-## 3. Point the jobs at the corpus
+## 3. Set data and output paths
 
-`DATA_ROOT` is the BinaryClassification directory of TUH-SZ on scratch. It must contain the official `train`, `dev`, and `eval` folders. `OUTPUT_ROOT` is where fold records are written. The job preamble uses `$SCRATCH/eeg_qgan_results` when `OUTPUT_ROOT` is unset.
+Place the TUH-SZ BinaryClassification tree on scratch. The directory must contain `train`, `dev`, and `eval`.
 
 ```bash
-export DATA_ROOT=$SCRATCH/path/to/BinaryClassification_Data
-export OUTPUT_ROOT=$SCRATCH/eeg_qgan_results
+export DATA_ROOT="$SCRATCH/path/to/BinaryClassification_Data"
+export OUTPUT_ROOT="$SCRATCH/eeg_qgan_results"
+export CC_ACCOUNT="<slurm-allocation>"
 ```
 
-## 4. Submit from the login node
+`OUTPUT_ROOT` defaults to `$SCRATCH/eeg_qgan_results` inside the job preamble (`scripts/narval/_common.sh`) when it is unset.
 
-`scripts/narval/submit.py` writes a SLURM script and calls `sbatch`. The allocation is `--account`, or the environment variable `CC_ACCOUNT`. Quantum-only work should be submitted with `--no-gpu`. Studies that train the autoencoder or the detector request one GPU.
+## 4. Submit the studies
+
+`scripts/narval/submit.py` writes a SLURM script and calls `sbatch`. The reported capacity comparison was split by seed.
 
 ```bash
-# inspect the script without submitting
 python scripts/narval/submit.py capacity_rematch --split-by seed --dry-run
-
-# one job per seed, which is how the long runs were split
-python scripts/narval/submit.py capacity_rematch --split-by seed
-
-# one job per seed and fold
-python scripts/narval/submit.py capacity_rematch --split-by seed-fold --account "$CC_ACCOUNT"
+python scripts/narval/submit.py capacity_rematch --split-by seed --account "$CC_ACCOUNT"
 ```
 
-Other studies use the same command with a different name: `entanglement_ablation_d8`, `downstream_scoped`. After submission, `squeue -u $USER` lists the jobs. Logs are written under `scripts/narval/logs`.
+| Command | Study |
+| --- | --- |
+| `entanglement_ablation_d8` | Entanglement topologies |
+| `downstream_scoped` | Detection with synthetic training clips |
+| `--no-gpu` | CPU-only allocation for generator-only jobs |
+| `--split-by seed-fold` | One job per seed and fold |
 
-`downstream_scoped` stops unless each window has a patient identifier.
+Monitor with `squeue -u "$USER"`. Standard output and error are written to `scripts/narval/logs`.
+
+`downstream_scoped` requires per-window patient identifiers:
 
 ```bash
 python scripts/build_patient_sidecars.py --data-root "$DATA_ROOT" --dry-run
 ```
 
-## 5. Read the finished jobs
+## 5. Aggregate the outputs
 
-Run the summary on a login node, against the directory the jobs actually wrote.
+On a login node, after the jobs have written their fold records:
 
 ```bash
-source $SCRATCH/venvs/eeg_qgan/bin/activate
-eeg-qgan-analyze $OUTPUT_ROOT/capacity_rematch --reference classical_equiv --csv $OUTPUT_ROOT/tables/
+source "$SCRATCH/venvs/eeg_qgan/bin/activate"
+eeg-qgan-analyze "$OUTPUT_ROOT/capacity_rematch" \
+  --reference classical_equiv \
+  --csv "$OUTPUT_ROOT/tables/"
 ```
 
-Intervals are computed by resampling folds. The summary prints the number of distinct partitions next to the number of rows. With the official `dev` and `eval` folders, two seeds give four rows and two partitions.
+Confidence intervals resample entire folds. Under the official `dev` and `eval` partition, two seeds produce four rows and two independent partitions. The summary reports both counts.
 
-## What can be checked without the cluster
+## Workstation checks
 
-These commands do not train on TUH-SZ and do not reproduce the published tables.
+The following commands validate the installation. They do not train on TUH-SZ and do not regenerate `results/published`.
 
 ```bash
 pip install -e ".[dev]"
