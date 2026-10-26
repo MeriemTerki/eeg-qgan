@@ -53,4 +53,4 @@ python -m eeg_qgan.experiments.runner capacity_rematch --data-root "$DATA_ROOT"
 | `downstream_scoped` | Detector trained with synthetic clips, scored on real clips |
 | `smoke` | Short run on a synthetic set |
 
-[docs/REPRODUCING.md](docs/REPRODUCING.md) covers the cluster launch and the summary command.
+[docs/REPRODUCING.md](docs/REPRODUCING.md) is the Narval procedure. The published runs were SLURM jobs on that Alliance Canada cluster, not local training.
