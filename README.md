@@ -1,61 +1,67 @@
 # eeg-qgan
 
-Latent generative models for multichannel seizure EEG, compared at matched capacity.
+Capacity-matched latent generation for multichannel seizure EEG.
 
-A hybrid Style-qGAN and classical generators share one autoencoder, one critic, and one parameter budget. Latent fidelity, decoded signal structure, and seizure detection are evaluated separately. The package does not claim a quantum advantage.
+Ictal windows are scarce. This repository trains a hybrid Style-qGAN in a latent space learned from TUH-SZ, against classical generators that share its autoencoder, its critic, and its parameter budget. Latent fidelity, decoded structure, and seizure detection are reported as three separate outcomes.
 
-## Installation
+## Contribution
 
-Python 3.10 or newer.
+The comparison isolates the generator. The autoencoder is frozen after a reconstruction gate, the critic and the update budget are shared, and the classical twin is sized to the full hybrid parameter count, including the classical readout.
+
+On that contract the hybrid generator is closer to real seizure codes than the equal-budget twin. The margin is not explained by entanglement, and a classical model of the same function class is closer still. At the operating dose the latent margin does not move detection: the area under the ROC curve on real holdout clips is unchanged within its interval. A Gaussian mixture, which uses no critic, remains the closest model on the latent metric and is the detection gain at full data.
+
+The result is a controlled evaluation, not a claim of quantum advantage. Expectation values are analytic.
+
+## Reported results
+
+Official patient-disjoint holdouts. Primary latent score is unbiased MMD² (lower is closer). Primary detection score is AUROC on real clips. The real-only detector sits at 0.821.
+
+| Comparison | Result |
+| --- | --- |
+| Hybrid vs capacity-matched twin | MMD² 0.016 vs 0.088 (704 vs 709 parameters; 82% of the hybrid budget is the classical readout) |
+| Entanglement | Product 0.011, ring 0.016, full 0.018 |
+| Fourier reference | MMD² ≈ 0.006 |
+| Gaussian mixture | MMD² ≈ 0.0008 |
+| Detection at full dose | Hybrid ΔAUROC +0.0004, interval contains zero; twin +0.005; mixture +0.010 |
+| Half the generator data | Hybrid ΔAUROC +0.019, not retained at full data |
+
+## Pipeline
+
+Windows of 1.28 s are encoded, generated, and decoded. Detection uses clips of 10.24 s. Synthetic clips may enter training. Scores are computed on real holdout clips.
+
+![Pipeline from TUH-SZ through a shared autoencoder and the generators to the detector](docs/figures/pipeline.png)
+
+The evaluation rules are written in [docs/PROTOCOL.md](docs/PROTOCOL.md).
+
+## Run
+
+Python 3.10 or newer. The corpus is not included.
 
 ```bash
 git clone https://github.com/MeriemTerki/eeg_qgan.git
 cd eeg_qgan
 pip install -e ".[dev]"
 pytest tests -q
-```
-
-## Data
-
-The experiments use the TUH Seizure Corpus in its BinaryClassification layout: 22 bipolar channels, resampled to 200 Hz, cut into non-overlapping windows of 256 samples (1.28 s). The outer split is the official `train`/`dev` and `train`/`eval` partition. Pass the corpus root at launch. It is not stored in this repository.
-
-```bash
 python -m eeg_qgan.experiments.runner capacity_rematch --data-root "$DATA_ROOT"
 ```
 
-`scripts/make_synthetic_dataset.py` writes a small stand-in under `data/synthetic` for a local check:
-
-```bash
-python scripts/make_synthetic_dataset.py --out data/synthetic
-python -m eeg_qgan.experiments.runner smoke --data-root data/synthetic --dry-run
-```
-
-## Experiments
-
-Each file in `configs/studies/` overrides `configs/base.yaml`.
-
-| Study | Comparison |
+| Study | Role |
 | --- | --- |
-| `capacity_rematch` | Hybrid generator against a classical network of the same size |
-| `entanglement_ablation_d8` | Product, ring, and denser circuits on a matched latent width |
-| `downstream_scoped` | Effect of synthetic windows on detection, scored on real holdout clips |
-| `smoke` | Installation check |
+| `capacity_rematch` | Hybrid against the matched twin |
+| `entanglement_ablation_d8` | Circuit topology at fixed width |
+| `downstream_scoped` | Detection on real holdout clips |
+| `smoke` | Local check on synthetic windows |
 
-```bash
-python scripts/validate_studies.py
-python scripts/narval/submit.py capacity_rematch --split-by seed --dry-run
-```
-
-Cluster setup and the commands that read a finished run are in [docs/REPRODUCING.md](docs/REPRODUCING.md). The evaluation rules are in [docs/PROTOCOL.md](docs/PROTOCOL.md).
+Reproduction commands are in [docs/REPRODUCING.md](docs/REPRODUCING.md).
 
 ## Layout
 
 ```
-eeg_qgan/     models, data, training, evaluation
-configs/      shared defaults and one file per study
-scripts/      validation, synthetic data, cluster submission
-tests/        splits, metrics, preprocessing, model shapes
-docs/         protocol and reproduction notes
+eeg_qgan/   models, data, training, evaluation
+configs/    defaults and one file per study
+scripts/    checks, synthetic data, cluster submission
+tests/      splits, metrics, preprocessing
+docs/       protocol, reproduction notes, pipeline figure
 ```
 
 ## Citation
