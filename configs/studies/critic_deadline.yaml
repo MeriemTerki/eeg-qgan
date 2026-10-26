@@ -1,0 +1,11 @@
+# Critic width 16 on the current architecture. h128 already finished as critic_width
+# with the same PIN. Do not submit the old critic_width.yaml (n_folds: 5, 600-ep).
+
+extends: canonical_deadline
+
+critic:
+  hidden: [16, 16]
+
+generator_arms:
+  - quantum
+  - classical_equiv

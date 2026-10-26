@@ -1,0 +1,13 @@
+# Decoded-space rematch on the current architecture.
+# evaluate_decoded always runs; this study also writes decoded windows.
+
+extends: canonical_deadline
+
+generator_arms:
+  - quantum
+  - classical_equiv
+  - classical_large
+  - gmm
+
+save:
+  decoded: true

@@ -1,0 +1,23 @@
+# Circuit depth: how many re-uploading layers are useful?
+#
+# Depth sets both the parameter count and the trigonometric degree the circuit can
+# express, so the capacity-matched twin is resized automatically for each depth from the
+# actual circuit rather than from a number copied into a config.
+#
+# Replaces experiment_depth_ablation_d2 and _d4. Vary quantum.n_layers per submission.
+
+extends: capacity_rematch
+
+n_seeds: 2
+n_folds: 5
+
+quantum:
+  n_layers: 2
+  entanglement: ring
+
+generator_arms:
+  - quantum
+  - classical_equiv
+  - fourier
+
+skip_downstream: true

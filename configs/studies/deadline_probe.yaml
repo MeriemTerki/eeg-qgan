@@ -1,0 +1,29 @@
+# Fast gate check before the full fleet.
+#
+# Expect best_val_nmse around 0.54 on TUH with the headline AE. Pass criterion is
+# max_nmse 0.55 (calibrated). Re-run after syncing before capacity_rematch.
+
+extends: capacity_rematch
+
+n_seeds: 1
+n_folds: 2
+
+generator_arms:
+  - quantum
+  - classical_equiv
+
+autoencoder:
+  widths: [128, 256, 256]
+  epochs: 300
+  patience: 40
+  stft_weight: 0.05
+  max_train_windows: null
+  on_gate_failure: exclude
+  max_nmse: 0.55
+  log_every_epochs: 1
+
+training:
+  generator_steps: 200
+  batch_size: 128
+
+skip_downstream: true

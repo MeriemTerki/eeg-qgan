@@ -1,0 +1,48 @@
+# Laptop deployment demo. Architecture matches the thesis headline
+# (latent 64, 8 qubits, 4 ring layers). Training budgets are shortened
+# so the demo can be prepared without Narval.
+
+use_gpu: false
+deterministic: true
+n_seeds: 1
+n_folds: 2
+
+latent_dim: 64
+n_qubits: 8
+noise_dim: latent
+latent_transform: identity
+
+generator_arms:
+  - quantum
+  - classical_equiv
+
+quantum:
+  n_layers: 4
+  entanglement: ring
+  ansatz: style_qgan
+  shots: null
+  measure_entanglement: false
+  measure_coupling: false
+
+autoencoder:
+  bottleneck: temporal
+  arch: v2
+  widths: [128, 256, 256]
+  epochs: 6
+  patience: 6
+  batch_size: 16
+  lr: 0.001
+  max_nmse: 2.0
+  on_gate_failure: exclude
+  log_every_epochs: 1
+  max_train_windows: 48
+  train_all_classes: true
+
+training:
+  generator_steps: 0
+  batch_size: 16
+  eval_every: 20
+  log_every: 20
+  eval_samples: 16
+
+skip_downstream: true

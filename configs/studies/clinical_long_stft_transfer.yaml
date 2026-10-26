@@ -1,0 +1,61 @@
+# Quantum / classical transfer under the long-clip STFT clinical protocol (E1).
+#
+# Generative rematch stays on 1.28 s windows. Decoded synthetics are packed into
+# 8-window clips for the STFT detector. Compare absolute metrics and Δ vs baseline
+# against the 1.28 s rematch tables — do not merge the two protocols in one figure.
+#
+# Submit after clinical_long_stft shows a clear absolute lift:
+#   python scripts/narval/submit.py clinical_long_stft_transfer --split-by seed \
+#     --set output_root=$SCRATCH/eeg_qgan_results_clinical_stft_transfer
+
+extends: capacity_rematch
+
+n_seeds: 2
+n_folds: 2
+
+# Prefer full contiguous files so clip packing keeps real time neighbourhoods.
+data:
+  max_segments_per_batch: null
+
+generator_arms:
+  - quantum
+  - classical_equiv
+  - gmm
+
+clinical:
+  enabled: true
+  detector_only: false
+  clip_windows: 8
+  clip_stride: 4
+  label_mode: any
+  require_contiguous: true
+  n_fft: 128
+  hop_length: 64
+
+# Need enough short synthetics to pack into clips (8192 / 8 = 1024 clips).
+n_synthetic: 8192
+augmentation:
+  dose_mode: fixed
+  dose_count: 8192
+  max_add: 12000
+  max_shortfall_fraction: 0.05
+
+detector:
+  kind: stft_cnn
+  conv_channels: [32, 64, 128]
+  n_fft: 128
+  hop_length: 64
+  head_hidden: 128
+  dropout: 0.3
+  epochs: 80
+  patience: 15
+  batch_size: 32
+  lr: 0.0003
+  early_stop_metric: auprc
+  threshold_metric: mcc
+  balanced_batches: true
+  oversample_positives: false
+  window_augment: false
+  ema_decay: 0.999
+
+skip_downstream: false

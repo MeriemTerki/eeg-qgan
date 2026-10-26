@@ -1,0 +1,76 @@
+# Literature-style clinical ceiling under honest patient-disjoint E1.
+#
+# Builds ~10.24 s clips (8 × 1.28 s contiguous short windows) and trains an STFT CNN.
+# This does NOT replace the 1.28 s generative rematch — it answers: "how high can
+# absolute AUROC / AUPRC / MCC go when the detector sees longer spectrograms?"
+#
+# Outer protocol unchanged: TUH train vs dev/eval folders (patient-disjoint).
+#
+# Submit:
+#   python scripts/narval/submit.py clinical_long_stft --split-by seed \
+#     --set output_root=$SCRATCH/eeg_qgan_results_clinical_stft
+
+n_seeds: 2
+n_folds: 2
+
+latent_dim: 64
+n_qubits: 8
+latent_transform: identity
+
+# No generative stage — ceiling on real clips only.
+generator_arms:
+  - gmm
+
+clinical:
+  enabled: true
+  detector_only: true
+  clip_windows: 8          # 8 × 1.28 s ≈ 10.24 s
+  clip_stride: 4
+  label_mode: any
+  n_fft: 128
+  hop_length: 64
+  max_clips_per_file: 64
+
+data:
+  max_segments_per_batch: 400
+  max_batch_files: null
+
+# Unused when detector_only, but kept valid for config validation.
+autoencoder:
+  arch: v2
+  widths: [128, 256, 256]
+  epochs: 1
+  patience: 1
+  max_nmse: 0.55
+  on_gate_failure: exclude
+
+training:
+  generator_steps: 1
+  batch_size: 128
+
+detector:
+  kind: stft_cnn
+  conv_channels: [32, 64, 128]
+  n_fft: 128
+  hop_length: 64
+  head_hidden: 128
+  dropout: 0.3
+  epochs: 60
+  patience: 12
+  batch_size: 32
+  lr: 0.0003
+  early_stop_metric: auprc
+  threshold_metric: mcc
+  balanced_batches: true
+  oversample_positives: false
+  window_augment: false
+  ema_decay: 0.999
+
+augmentation:
+  dose_mode: fixed
+  dose_count: 0
+  max_add: 0
+  max_shortfall_fraction: 1.0
+
+n_synthetic: 0
+skip_downstream: false

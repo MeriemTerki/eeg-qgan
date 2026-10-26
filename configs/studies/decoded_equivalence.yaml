@@ -1,0 +1,52 @@
+# Wide latent, decoded-space evaluation. Requires AE gate pass (raise @ 0.55).
+
+extends: capacity_rematch
+
+latent_dim: 64
+n_qubits: 8
+
+n_seeds: 1
+n_folds: 2
+
+autoencoder:
+  bottleneck: temporal
+  arch: v2
+  widths: [128, 256, 256]
+  epochs: 600
+  patience: 60
+  lr_schedule: cosine
+  stft_weight: 0.1
+  max_train_windows: null
+  on_gate_failure: raise
+  max_nmse: 0.55
+
+n_synthetic: 8192
+
+augmentation:
+  dose_mode: fixed
+  dose_count: 8192
+  max_add: 12000
+  max_shortfall_fraction: 0.05
+
+detector:
+  kind: cnn_bilstm_v2
+  conv_widths: [96, 192, 384]
+  blocks_per_stage: 2
+  lstm_hidden: 192
+  lstm_layers: 2
+  head_hidden: 256
+  epochs: 100
+  patience: 20
+  lr: 0.0003
+  early_stop_metric: auprc
+  threshold_metric: mcc
+  balanced_batches: true
+  oversample_positives: false
+  use_spectral: true
+  window_augment: true
+
+generator_arms:
+  - quantum
+  - classical_equiv
+  - classical_large
+  - gmm

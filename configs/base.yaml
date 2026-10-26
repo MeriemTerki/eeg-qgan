@@ -1,0 +1,323 @@
+# Shared defaults for every study.
+#
+# A study overlay in configs/studies/ changes only what it needs. Seed and fold slicing
+# is a command-line concern (--seed-index, --fold-start, --fold-end), which is why this
+# directory holds a handful of files rather than the twenty-eight near-duplicates the
+# previous layout accumulated.
+#
+# Defaults here encode the audit corrections. Changing them back is possible but
+# requires doing so deliberately, and several combinations are rejected outright by
+# eeg_qgan.config.validate.
+
+output_root: results
+use_gpu: true
+deterministic: true
+
+seed: 42
+n_seeds: 2
+n_folds: 5
+
+# ---------------------------------------------------------------------------
+# Data
+# ---------------------------------------------------------------------------
+sample_length: 256
+target_fs: 200
+n_channels: 22
+
+# Supervisor protocol for BinaryClassification_Data (Jun 2022):
+#   "these data are processed based on the predefined data structure provided by
+#    the original/main dataset, so they are patient-wise split, as long as you use
+#    train for training and the others for testing."
+# Outer folds are therefore train vs dev and train vs eval. Per-window patient
+# sidecars are not required for that claim. Inner generator train/select/report
+# splits still group by batch file so one batch cannot leak into selection and
+# reporting at once.
+#
+# Set split_mode: grouped_cv only if you have per-window *_patients.npy sidecars
+# and want StratifiedGroupKFold inside a single directory.
+group_key: file
+min_group_size: 1
+n_folds: 2
+
+data:
+  root: /scratch/linah03/EpilepticSeizureProject/Dataset/THUSZ/edf/segment_5_eeg_all/BinaryClassification_Data
+  split_mode: predefined
+  holdouts: [dev, eval]
+  max_batch_files: null
+  max_segments_per_batch: 100
+  max_per_class: null
+  # Daubechies-6 soft-threshold denoising (Implementation chapter). Applied
+  # identically to every arm. Requires PyWavelets; the loader raises if this is
+  # true and the package is missing, so the manuscript and the code cannot disagree.
+  denoise: true
+  normalize: true
+  # Scope of the robust [-1, 1] rescaling.
+  #   window    : one percentile range per channel per 1.28 s window. Every window is
+  #               stretched to fill the range, so a 400 uV seizure burst and quiet
+  #               background become indistinguishable in amplitude, and relative
+  #               amplitude across channels is gone too. This is what ae_v5b/ae_v5c ran.
+  #   recording : one range per batch file, shared across channels. Between-subject and
+  #               between-amplifier scale differences are still removed, but amplitude
+  #               contrast inside a recording survives. No statistic crosses a recording
+  #               boundary, so the outer patient-disjoint split is unaffected.
+  # Left at 'window' so saved ae_v5c generative results stay reproducible; the detection
+  # studies set 'recording' explicitly. Changing it invalidates saved AE checkpoints.
+  normalize_scope: window
+  require_patient_groups: false
+
+# ---------------------------------------------------------------------------
+# Latent space
+# ---------------------------------------------------------------------------
+# Default width for the reconstruction budget on TUH windows. latent_dim 32 with
+# the upgraded AE still landed at NMSE ~0.61 on Narval (gate 0.5); 64 is the
+# default that targets clearing the gate. Studies may override. When n_qubits <
+# latent_dim the quantum arm is hybrid and the capacity audit reports the
+# classical expansion fraction.
+latent_dim: 64
+n_qubits: 8
+
+# Audit E2. Every generator is bounded to (-1, 1) and so is the encoder bottleneck, so
+# with no transform the two ranges match exactly. Standardising the target without
+# compensation puts about a third of its mass out of reach and gives the reported
+# distance an irreducible floor that varies by fold; that combination is rejected by
+# config validation. Use whiten_scaled if a standardised target is wanted.
+latent_transform: identity
+
+latent:
+  # Audit E4. Three disjoint, group-respecting splits: the generator trains on the
+  # remainder, its checkpoint is chosen on select, and the reported distance and the
+  # quality-gate reference come from report.
+  select_size: 0.15
+  report_size: 0.15
+  std_floor: 0.01
+  robust_scale: true
+
+# Audit F6. Every arm receives the same noise width, so a difference in input dimension
+# cannot be mistaken for a difference between quantum and classical models. Set to
+# 'qubits' to reproduce the earlier asymmetry.
+noise_dim: latent
+
+# Synthetic budget for generators. Must be ≥ augmentation.dose_count when using
+# dose_mode: fixed. Do NOT use dose_mode: balance unless n_synthetic can cover the
+# full request (~tens of thousands under TUH); ae_v5b silently delivered 1024/30600.
+n_synthetic: 8192
+# R1.1: the floor is a distribution, not a point estimate. 300 disjoint real-vs-real
+# partitions so an arm can be placed against it with an interval rather than a number.
+noise_floor_repeats: 300
+
+# ---------------------------------------------------------------------------
+# Autoencoder
+# ---------------------------------------------------------------------------
+autoencoder:
+  # Audit E3. 'temporal' keeps the remaining time axis at the bottleneck. 'pooled'
+  # reproduces the AdaptiveAvgPool1d(1) that discarded all temporal structure and left
+  # the decoder unable to beat the global mean.
+  bottleneck: temporal
+  # 'v2' adds residual blocks with group normalisation and channel attention at each
+  # scale and replaces transposed convolutions with upsample-then-convolve, which
+  # removes the fixed ripple a stride-2 kernel-4 transpose leaves in every decoded
+  # window. 'v1' reproduces the ae_v5b stack exactly.
+  arch: v2
+  blocks_per_stage: 1
+  stem_kernel: 7
+  attention: true
+  # Three stride-2 stages. Narval ae_v4_cpu probe plateaued at NMSE ~0.544 with
+  # [64,128,256] + 8k-window subsample; use the wider stack and full fold data.
+  widths: [128, 256, 256]
+  # ae_v5c probe: NMSE was still falling at epoch 300 (0.4759 → 0.4492 over the last
+  # 135 epochs), so the previous number was a budget limit. Longer budget with a cosine
+  # decay rather than waiting on a plateau that never arrived.
+  epochs: 600
+  lr_schedule: cosine        # cosine | plateau
+  warmup_epochs: 5
+  min_lr_factor: 0.02
+  batch_size: 128
+  lr: 0.001
+  weight_decay: 1.0e-5
+  # Band structure matters for both the gate and the decoded fidelity metrics.
+  stft_weight: 0.1
+  l1_weight: 0.05
+  patience: 60
+  grad_clip: 1.0
+  denoise_std: 0.01
+  train_all_classes: true
+  # null = use every training-fold window (subsample was hurting the gate).
+  max_train_windows: null
+  log_every_epochs: 5
+
+  # Gate calibrated on TUH BinaryClassification windows after ae_v4 probes:
+  # best NMSE ~0.54 with a working temporal AE (far from the audited failure mode
+  # NMSE ≥ 1). Threshold 0.55 accepts that plateau; 0.5 was unreachable without
+  # multi-day AE budgets. Document this calibration in Methods.
+  max_nmse: 0.55
+  max_saturation: null
+  min_acf_preservation: null
+  on_gate_failure: raise   # raise | exclude
+
+# ---------------------------------------------------------------------------
+# Generators
+# ---------------------------------------------------------------------------
+generator_arms:
+  - quantum
+  - classical_equiv
+  - gmm
+
+quantum:
+  n_layers: 4
+  entanglement: ring
+  ansatz: style_qgan
+  shots: null            # null means analytic expectation values
+  measure_entanglement: true
+  measure_coupling: true
+  entanglement_samples: 256
+  coupling_probes: 32
+  prefer_lightning: false
+
+classical:
+  matched_hidden: [10]
+  large_hidden: [64, 64]
+  # Audit F12. The unbounded LeakyReLU version diverged at the matched learning rate in
+  # every run, which made it useless as evidence about capacity.
+  large_spectral_norm: true
+  last_hidden: [50, 30]
+  fourier_n_frequencies: 4
+
+mixture:
+  n_components: 8
+  covariance_type: full
+  reg_covar: 0.0001
+  clip_to_range: true
+
+# ---------------------------------------------------------------------------
+# Adversarial training
+# ---------------------------------------------------------------------------
+training:
+  loss: wgan_gp
+  equal_budget: true
+  generator_steps: 1500
+  batch_size: 128
+  n_critic: 5
+  generator_lr: 0.001
+  critic_lr: 0.0001
+  match_lr: true
+  gp_lambda: 10.0
+  eval_every: 250
+  log_every: 250
+  eval_samples: 512
+  divergence_threshold: 0.25
+
+# Audit F14. The critic carried roughly 33000 parameters against the generator's 128.
+# That is not automatically wrong under WGAN-GP, but it was never stated or varied.
+critic:
+  hidden: [128, 128]
+
+# ---------------------------------------------------------------------------
+# Downstream detector
+# ---------------------------------------------------------------------------
+skip_downstream: false
+
+# Optional literature-style clinical protocol (long clips + STFT). Off by default.
+# When enabled, the 1.28 s generative rematch is unchanged; only the detector input
+# changes (see configs/studies/clinical_long_stft.yaml).
+clinical:
+  enabled: false
+  detector_only: false
+  clip_windows: 8
+  clip_stride: 4
+  label_mode: any          # any | center | majority
+  require_contiguous: true
+  n_fft: 128
+  hop_length: 64
+  max_clips_per_file: null
+  # Raised-cosine overlap between adjacent synthetic windows when packing them into a
+  # clip. 0 reproduces plain concatenation, which leaves a step at every seam that a
+  # time-resolved detector can learn to read as "synthetic, therefore positive".
+  synthetic_crossfade: 0
+
+detector:
+  # 'cnn_bilstm_v2' is the residual / attention-pooled stack with a band-power branch.
+  # 'cnn_bilstm' is the ae_v5b two-layer model, kept for the architecture ablation.
+  # 'stft_cnn' and 'stft_bilstm' are the long-clip spectrogram models; stft_bilstm pools
+  # only frequency and keeps the time axis, which is the point of a 10 s clip.
+  # Do NOT chase the old ~0.74 F1 by restoring leaky GroupKFold (audit E1).
+  # Absolute clinical numbers on 1.28 s windows under patient-disjoint TUH are lower
+  # than papers that use 8–12 s STFT clips — lead with AUROC / AUPRC / MCC / ECE.
+  kind: cnn_bilstm_v2
+  conv_widths: [96, 192, 384]
+  blocks_per_stage: 2
+  lstm_hidden: 192
+  lstm_layers: 2
+  head_hidden: 256
+  dropout: 0.25
+  conv_dropout: 0.1
+  use_spectral: true
+  epochs: 100
+  batch_size: 64
+  lr: 0.0003
+  weight_decay: 1.0e-4
+  lr_schedule: cosine
+  warmup_fraction: 0.05
+  min_lr_factor: 0.05
+  grad_clip: 1.0
+  ema_decay: 0.999
+  patience: 20
+  focal_gamma: 2.0
+  use_pos_weight: true
+  early_stop_metric: auprc   # auprc | auroc
+  # Operating point on real-only validation: MCC under imbalance (not F1).
+  threshold_metric: mcc      # mcc | f1 | youden
+  balanced_batches: true
+  oversample_positives: false
+  oversample_target_ratio: 1.0
+  max_oversample_factor: 5.0
+  allow_stacked_rebalance: false
+
+  # Mild label-preserving jitter on every arm including the real-only baseline, so
+  # absolute clinical scores improve without confounding the synthetic-dose contrast.
+  window_augment: true
+  augment_time_shift: 16
+  augment_scale: 0.1
+  augment_channel_dropout: 0.05
+  augment_noise_std: 0.02
+  val_fraction: 0.15
+
+# ---------------------------------------------------------------------------
+# Augmentation
+# ---------------------------------------------------------------------------
+# Audit E5. The dose is stated once, here. The old code requested 200 windows, found
+# that nothing cleared a threshold of 0.35 when the observed scores ran from 0.03 to
+# 0.08, silently kept a quarter of the request, and injected 50 windows that had just
+# failed the fidelity criterion. That is a 1.4 percent dose of low-fidelity data, not a
+# test of quality gating.
+augmentation:
+  # Publishable default: an explicit, deliverable fixed dose. "balance" is only
+  # valid when n_synthetic and max_add cover the resolved request (else the run
+  # raises via max_shortfall_fraction).
+  dose_mode: fixed        # fixed | balance | proportional
+  target_ratio: 1.0
+  dose_count: 8192
+  dose_multiplier: 0.5
+  max_add: 12000
+  min_dose_fraction: 0.0
+  max_shortfall_fraction: 0.05
+  quality_gate: false
+  min_score: 0.0
+  fallback: error         # error | median | all
+
+# ---------------------------------------------------------------------------
+# What is written to disk
+# ---------------------------------------------------------------------------
+# Results JSON is always written after every fold (metrics + config + grouping).
+# The flags below control the reusable checkpoints next to it.
+save:
+  artifacts: true            # master switch for the artifacts/ tree
+  autoencoder: true          # autoencoder.pt per fold
+  generators: true           # generators/<arm>.pt (selected checkpoint)
+  critics: false             # critics/<arm>.pt (usually not needed later)
+  latents: true              # z_report.npy and latents/<arm>_fake.npy
+  latent_transform: true     # latent_transform.npz
+  decoded: false             # decoded/<arm>.npy (large; turn on only if needed)
+  decoded_figure_windows: 0  # save decoded/<arm>_figure.npy (small subset for thesis plots)
+  full_training_history: false
+  training_history_epochs: 20
+  detectors: false           # detectors/*.pt (turn on for reuse of classifiers)

@@ -1,0 +1,24 @@
+# Temporal bottleneck study. Gate exclude so NMSE is always recorded.
+
+extends: capacity_rematch
+
+n_seeds: 1
+n_folds: 2
+
+autoencoder:
+  bottleneck: temporal
+  arch: v2
+  widths: [128, 256, 256]
+  epochs: 600
+  patience: 60
+  lr_schedule: cosine
+  stft_weight: 0.1
+  max_train_windows: null
+  on_gate_failure: exclude
+  max_nmse: 0.55
+
+generator_arms:
+  - quantum
+  - classical_equiv
+
+skip_downstream: true

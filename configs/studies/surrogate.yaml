@@ -1,0 +1,27 @@
+# The classical surrogate: can a Fourier basis reproduce the trained circuit?
+#
+# A re-uploading circuit is a bounded-degree trigonometric function of its inputs, so a
+# matched Fourier basis is the natural classical surrogate. If a hundred classical
+# parameters reproduce the circuit to a normalised error near 5e-4, the circuit is not
+# doing anything a classical model of the same size cannot, which is a more direct
+# statement than any distance comparison.
+#
+# Included as an arm so the surrogate is trained and scored under the same protocol as
+# everything else rather than fitted post hoc in a separate script.
+
+extends: capacity_rematch
+
+n_seeds: 2
+n_folds: 5
+
+generator_arms:
+  - quantum
+  - quantum_none
+  - fourier
+  - classical_equiv
+
+classical:
+  # Degree matched to the circuit depth, so the surrogate has the same expressive class.
+  fourier_n_frequencies: 4
+
+skip_downstream: true

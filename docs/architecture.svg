@@ -1,0 +1,69 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="920" height="420" viewBox="0 0 920 420" role="img" aria-labelledby="title desc">
+  <title id="title">eeg-qgan evaluation pipeline</title>
+  <desc id="desc">TUH-SZ windows pass through a frozen autoencoder. Generators are compared in latent space, then decoded, then scored by a frozen detector on real holdout clips.</desc>
+  <style>
+    .h { font: 600 15px "Segoe UI", Arial, sans-serif; fill: #14324f; }
+    .s { font: 12px "Segoe UI", Arial, sans-serif; fill: #3d5166; }
+    .b { font: 600 13px "Segoe UI", Arial, sans-serif; fill: #14324f; }
+    .t { font: 11px "Segoe UI", Arial, sans-serif; fill: #3d5166; }
+    .box { fill: #f4f7fb; stroke: #1f4e79; stroke-width: 1.4; rx: 10; }
+    .accent { fill: #e7f6f4; stroke: #1a7a72; }
+    .ref { fill: #f7f1e8; stroke: #a56b32; }
+  </style>
+  <rect width="920" height="420" fill="#ffffff"/>
+  <text x="28" y="32" class="h">Capacity-matched latent comparison</text>
+  <text x="28" y="52" class="s">Same host, same critic, same budget. Three scores, never treated as one.</text>
+
+  <rect class="box" x="28" y="78" width="150" height="72"/>
+  <text x="103" y="106" text-anchor="middle" class="b">TUH-SZ</text>
+  <text x="103" y="126" text-anchor="middle" class="t">22 x 256 · 1.28 s</text>
+
+  <rect class="box" x="214" y="78" width="170" height="72"/>
+  <text x="299" y="106" text-anchor="middle" class="b">Frozen autoencoder</text>
+  <text x="299" y="126" text-anchor="middle" class="t">code in R^64</text>
+
+  <rect class="box accent" x="420" y="78" width="200" height="72"/>
+  <text x="520" y="106" text-anchor="middle" class="b">Hybrid Style-qGAN</text>
+  <text x="520" y="126" text-anchor="middle" class="t">8 qubits + classical readout</text>
+
+  <rect class="box" x="656" y="70" width="236" height="40"/>
+  <text x="774" y="95" text-anchor="middle" class="b">Capacity-matched twin</text>
+  <rect class="box" x="656" y="118" width="236" height="40"/>
+  <text x="774" y="143" text-anchor="middle" class="b">Gaussian mixture</text>
+
+  <path d="M178 114 H214" stroke="#1f4e79" stroke-width="1.6" fill="none" marker-end="url(#arrow)"/>
+  <path d="M384 114 H420" stroke="#1f4e79" stroke-width="1.6" fill="none"/>
+  <path d="M620 100 H656" stroke="#1f4e79" stroke-width="1.6" fill="none"/>
+  <path d="M620 128 H656" stroke="#1f4e79" stroke-width="1.6" fill="none"/>
+
+  <defs>
+    <marker id="arrow" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+      <path d="M0 0 L6 3 L0 6 Z" fill="#1f4e79"/>
+    </marker>
+  </defs>
+
+  <rect class="box" x="28" y="210" width="270" height="150"/>
+  <text x="163" y="240" text-anchor="middle" class="b">Level 1 · latent</text>
+  <text x="48" y="268" class="t">Unbiased MMD on holdout codes.</text>
+  <text x="48" y="288" class="t">Primary rematch score.</text>
+  <text x="48" y="308" class="t">Checkpoint uses a separate split.</text>
+  <text x="48" y="336" class="s">Lower is closer.</text>
+
+  <rect class="box" x="324" y="210" width="270" height="150"/>
+  <text x="459" y="240" text-anchor="middle" class="b">Level 2 · decoded EEG</text>
+  <text x="344" y="268" class="t">Wasserstein, autocorrelation,</text>
+  <text x="344" y="288" class="t">spectra, after the shared decoder.</text>
+  <text x="344" y="308" class="t">May disagree with latent MMD.</text>
+  <text x="344" y="336" class="s">Not a clinical score.</text>
+
+  <rect class="box" x="620" y="210" width="272" height="150"/>
+  <text x="756" y="240" text-anchor="middle" class="b">Level 3 · detection</text>
+  <text x="640" y="268" class="t">STFT-BiLSTM on real holdout clips.</text>
+  <text x="640" y="288" class="t">AUROC is the clinical endpoint.</text>
+  <text x="640" y="308" class="t">Synthetics enter training only.</text>
+  <text x="640" y="336" class="s">Not equated with Level 1.</text>
+
+  <path d="M163 186 V210" stroke="#1f4e79" stroke-width="1.4" fill="none" marker-end="url(#arrow)"/>
+  <path d="M459 186 V210" stroke="#1f4e79" stroke-width="1.4" fill="none" marker-end="url(#arrow)"/>
+  <path d="M756 186 V210" stroke="#1f4e79" stroke-width="1.4" fill="none" marker-end="url(#arrow)"/>
+</svg>

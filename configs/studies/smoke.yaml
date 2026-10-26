@@ -1,0 +1,50 @@
+# Fastest end-to-end check on real BinaryClassification_Data (Narval).
+# Uses the supervisor protocol: train vs holdout folders.
+
+n_seeds: 1
+n_folds: 2
+
+latent_dim: 8
+n_qubits: 8
+
+group_key: file
+min_group_size: 1
+
+data:
+  split_mode: predefined
+  holdouts: [dev, eval]
+  # Need >= 3 seizure batch files in train: nested generator train/select/report
+  # splits are group-disjoint and only use seizure windows from the train folder.
+  max_batch_files: 4
+  max_segments_per_batch: 200
+  require_patient_groups: false
+
+n_synthetic: 128
+noise_floor_repeats: 10
+
+augmentation:
+  dose_mode: fixed
+  dose_count: 128
+  max_add: 128
+  max_shortfall_fraction: 0.05
+
+autoencoder:
+  epochs: 10
+  patience: 5
+  on_gate_failure: exclude
+  max_nmse: 2.0
+
+training:
+  generator_steps: 60
+  eval_every: 20
+  log_every: 20
+  eval_samples: 64
+
+detector:
+  epochs: 3
+  patience: 2
+
+generator_arms:
+  - quantum
+  - classical_equiv
+  - gmm

@@ -1,0 +1,29 @@
+# Finite-shot evaluation: would the circuit survive real hardware sampling?
+#
+# The principal tables use analytic expectation values, which no device provides. This
+# study re-evaluates with a finite shot budget so the gap between simulation and hardware
+# is measured rather than assumed. Parameter-shift gradients are used automatically when
+# shots are set, which makes this study markedly slower than the analytic ones.
+
+extends: capacity_rematch
+
+n_seeds: 1
+n_folds: 5
+
+quantum:
+  n_layers: 4
+  entanglement: ring
+  shots: 1024
+
+generator_arms:
+  - quantum
+
+training:
+  # Parameter-shift gradients cost one circuit evaluation per parameter per step, so the
+  # budget is reduced. Analytic comparisons must therefore use the same reduced budget
+  # or the comparison is confounded by training length.
+  generator_steps: 300
+  eval_every: 100
+  log_every: 50
+
+skip_downstream: true

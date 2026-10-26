@@ -1,0 +1,74 @@
+# Same paper-style claim as paper_style_balanced, budgeted for Narval CPU + a tight deadline.
+#
+# Kept (this is the experiment):
+#   - patient-disjoint train vs holdout
+#   - recording-scope normalisation + 10.24 s clips + stft_bilstm
+#   - latent Style-qGAN / classical twin / GMM, train-fold only
+#   - detector trains on real + synthetic seizures (class-balance request)
+#   - evaluation on real holdout only + real-only baseline for Δ
+#
+# Cut (time only — not a new architecture):
+#   - AE 80 epochs / patience 20, subsampled to 80k windows (your running jobs already
+#     reached NMSE ~0.38 by epoch 34 on full data; gate is 0.55)
+#   - 400 windows/file instead of 800 (matches the clinical v1 data cap that already
+#     produced AUROC 0.78)
+#   - 1000 GAN steps instead of 1500
+#   - 16384 generated shorts / max 1024 synthetic clips (still a real dose)
+#   - detector 50 epochs / patience 12
+#
+# Expected wall: ~24–36 h per seed-fold on 16 CPU cores, vs 80 h+ for the 600-epoch run.
+#
+# Submit (cancel the long CPU jobs first):
+#   scancel 685666 685668 685672 685677
+#   python scripts/narval/submit.py paper_style_cpu_deadline --split-by seed-fold --no-gpu \
+#     --set output_root=$SCRATCH/eeg_qgan_results_paper_style_cpu
+
+extends: paper_style_balanced
+
+n_seeds: 2
+n_folds: 2
+
+data:
+  normalize_scope: recording
+  max_segments_per_batch: 400
+
+autoencoder:
+  epochs: 80
+  patience: 20
+  max_train_windows: 80000
+  max_nmse: 0.55
+  on_gate_failure: raise
+
+training:
+  generator_steps: 1000
+  eval_every: 250
+
+n_synthetic: 16384
+noise_floor_repeats: 50
+
+augmentation:
+  dose_mode: balance
+  target_ratio: 1.0
+  max_add: 1024
+  max_shortfall_fraction: 0.05
+  quality_gate: false
+
+detector:
+  kind: stft_bilstm
+  epochs: 50
+  patience: 12
+  batch_size: 32
+
+# Fold JSON is always written. These flags persist weights so a killed job still
+# leaves reusable AE / generators / latents / detectors.
+save:
+  artifacts: true
+  autoencoder: true
+  generators: true
+  critics: false
+  latents: true
+  latent_transform: true
+  decoded: false
+  detectors: true
+
+skip_downstream: false

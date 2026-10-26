@@ -1,0 +1,97 @@
+# Long-clip clinical ceiling, second pass. Real data only, no generative stage.
+#
+# The first pass (clinical_long_stft) reached AUROC 0.784 / AUPRC 0.277 / MCC 0.294.
+# Three things in that run were limiting the detector rather than the data:
+#
+#   1. Each 1.28 s piece of a 10.24 s clip was rescaled to fill [-1, 1] on its own.
+#      Amplitude is the dominant seizure cue and it was normalised away eight times
+#      per clip, leaving a step discontinuity at every seam. Fixed by
+#      data.normalize_scope: recording plus clip-level preprocessing in the loader.
+#   2. stft_cnn ends in AdaptiveAvgPool2d((1, 1)), averaging the whole time-frequency
+#      plane. On a 10 s clip that throws away onset and evolution, which is the only
+#      reason to use a 10 s clip. stft_bilstm pools frequency and keeps time.
+#   3. max_segments_per_batch: 400 with max_clips_per_file: 64 used a small slice of
+#      the corpus.
+#
+# The outer protocol is untouched: TUH train folder for training, dev/eval folders for
+# testing, patient-disjoint by construction (E1). Nothing here relaxes the split.
+#
+# Submit (CPU is fine, see CLINICAL_STFT_PROTOCOL.md):
+#   python scripts/narval/submit.py clinical_ceiling_v2 --split-by seed --no-gpu \
+#     --set output_root=$SCRATCH/eeg_qgan_results_clinical_v2
+
+n_seeds: 2
+n_folds: 2
+
+latent_dim: 64
+n_qubits: 8
+latent_transform: identity
+
+generator_arms:
+  - gmm
+
+clinical:
+  enabled: true
+  detector_only: true
+  clip_windows: 8          # 8 x 1.28 s = 10.24 s
+  clip_stride: 4
+  label_mode: any
+  n_fft: 128
+  hop_length: 64
+  max_clips_per_file: 256
+
+data:
+  normalize_scope: recording
+  max_segments_per_batch: 2000
+  max_batch_files: null
+
+# Unused when detector_only, kept valid for config validation.
+autoencoder:
+  arch: v2
+  widths: [128, 256, 256]
+  epochs: 1
+  patience: 1
+  max_nmse: 0.55
+  on_gate_failure: exclude
+
+training:
+  generator_steps: 1
+  batch_size: 128
+
+detector:
+  kind: stft_bilstm
+  conv_channels: [32, 64, 128]
+  proj_dim: 256
+  lstm_hidden: 128
+  lstm_layers: 2
+  head_hidden: 256
+  n_fft: 128
+  hop_length: 64
+  dropout: 0.3
+  conv_dropout: 0.1
+  use_spectral: true
+  epochs: 80
+  patience: 15
+  batch_size: 32
+  lr: 0.0003
+  early_stop_metric: auprc
+  threshold_metric: mcc
+  balanced_batches: true
+  oversample_positives: false
+  # Time-shift jitter on a clip is label-preserving and cheap; amplitude scaling is not
+  # applied because recording-scope normalisation is what makes amplitude informative.
+  window_augment: true
+  augment_time_shift: 64
+  augment_scale: 0.0
+  augment_channel_dropout: 0.05
+  augment_noise_std: 0.01
+  ema_decay: 0.999
+
+augmentation:
+  dose_mode: fixed
+  dose_count: 0
+  max_add: 0
+  max_shortfall_fraction: 1.0
+
+n_synthetic: 0
+skip_downstream: false

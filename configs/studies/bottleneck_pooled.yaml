@@ -1,0 +1,7 @@
+# The audited configuration, kept so the regression can be demonstrated rather than
+# only described. Identical to bottleneck_comparison except for the bottleneck.
+
+extends: bottleneck_comparison
+
+autoencoder:
+  bottleneck: pooled

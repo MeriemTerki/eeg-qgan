@@ -1,0 +1,12 @@
+# Dose curve on the CURRENT detection protocol (not 1.28 s cnn_bilstm_v2).
+# Same stack as paper_style_cpu_deadline; only max_add (clip count) changes.
+# 1024 is already the running paper_style job — submit 256 and 512 only.
+
+extends: paper_style_cpu_deadline
+
+augmentation:
+  dose_mode: balance
+  target_ratio: 1.0
+  max_add: 512
+  max_shortfall_fraction: 0.05
+  quality_gate: false

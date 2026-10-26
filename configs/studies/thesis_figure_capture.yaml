@@ -1,0 +1,42 @@
+# Thesis figure capture: full training histories + decoded waveform panels.
+#
+# Same architecture pin as paper_style_cpu_deadline, but logs every training epoch/step
+# and saves a small decoded subset for publication figures (not the full 16k windows).
+#
+# Submit on Narval (one seed-fold is enough for figures; use 2x2 for fold means):
+#   export DATA_ROOT=/scratch/linah03/EpilepticSeizureProject/Dataset/THUSZ/edf/segment_5_eeg_all/BinaryClassification_Data
+#   export OUTPUT_ROOT=$SCRATCH/eeg_qgan_results_thesis_figures
+#   python scripts/narval/submit.py thesis_figure_capture --split-by seed-fold --no-gpu \
+#     --set output_root=$OUTPUT_ROOT
+#
+# After sync, plot locally:
+#   python scripts/plot_thesis_figures.py --results-root ../eeg_qgan_results_thesis_figures/thesis_figure_capture
+
+extends: paper_style_cpu_deadline
+
+study: thesis_figure_capture
+
+# Minimum for thesis panels: one seed-fold job (~24–36 h):
+#   python scripts/narval/submit.py thesis_figure_capture --no-gpu --no-gpu \\
+#     --set output_root=$OUTPUT_ROOT selection.seed_index=0 selection.fold_start=0 selection.fold_end=1
+#
+# Fold-averaged curves: submit all seed×fold jobs (n_seeds=1, n_folds=2 → two jobs).
+#
+# Do not relax autoencoder.max_nmse here. Job 1184337 failed at 0.5581 because the
+# 80k-window subsample used Python's per-process hash(); that is fixed in
+# training/autoencoder.py. Resubmit after syncing that file.
+
+n_seeds: 1
+n_folds: 2
+
+training:
+  log_every: 25
+
+save:
+  full_training_history: true
+  decoded: false
+  decoded_figure_windows: 48
+  detectors: true
+
+detector:
+  save_history: true

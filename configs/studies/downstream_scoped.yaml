@@ -1,0 +1,71 @@
+# R2.5 — the one scoped downstream experiment, under a real patient split.
+#
+# From the post-audit brief: "we rerun downstream under a real patient split, but
+# scoped — rematch arms plus the no-augmentation baseline only, not the full historical
+# sweep. Downstream is secondary evidence in this paper; one clean experiment is enough."
+#
+# Four requirements, and where each is enforced:
+#   patient-wise grouping with a hard error on missing identifiers
+#       -> data.split_mode: grouped_cv + require_patient_groups: true, which raises
+#          PatientGroupingError rather than silently falling back to batch-file groups.
+#   dose ~2800 (the class-balancing dose, not the historical 8192)
+#       -> augmentation.dose_count: 2800
+#   augmentation applied after the train/early-stop split (F8)
+#       -> already structural in training/detector.py: the validation split is carved
+#          from real data before synthetic windows are concatenated.
+#   rematch arms + no-augmentation baseline only
+#       -> generator_arms below; the baseline is always computed.
+#
+# GATED ON R0.1. This study cannot run until per-window patient sidecars exist. Build
+# them with scripts/build_patient_sidecars.py and confirm the run reports
+# group_source starting with "sidecar". If sidecars cannot be produced, do not silently
+# switch to split_mode: predefined here — that is a different claim and belongs in a
+# differently named study.
+
+extends: capacity_rematch
+
+n_seeds: 2
+n_folds: 5
+
+# Rematch pair only. classical_large and classical_matched answer a generative question
+# that the downstream detector cannot resolve at this sample size.
+generator_arms:
+  - quantum
+  - classical_equiv
+
+data:
+  split_mode: grouped_cv
+  require_patient_groups: true
+  normalize_scope: recording
+  max_segments_per_batch: 600
+
+group_key: patient
+min_group_size: 8
+
+augmentation:
+  dose_mode: fixed
+  dose_count: 2800
+  max_add: 4000
+  max_shortfall_fraction: 0.05
+  quality_gate: false
+
+n_synthetic: 4096
+
+detector:
+  kind: cnn_bilstm_v2
+  conv_widths: [96, 192, 384]
+  blocks_per_stage: 2
+  lstm_hidden: 192
+  lstm_layers: 2
+  head_hidden: 256
+  epochs: 100
+  patience: 20
+  lr: 0.0003
+  early_stop_metric: auprc
+  threshold_metric: mcc
+  balanced_batches: true
+  oversample_positives: false
+  use_spectral: true
+  window_augment: true
+
+skip_downstream: false

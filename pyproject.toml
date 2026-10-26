@@ -1,0 +1,43 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "eeg-qgan"
+version = "1.0.0"
+description = "Latent-space quantum and classical generative models for scarce multichannel seizure EEG"
+requires-python = ">=3.10"
+readme = "README.md"
+
+dependencies = [
+    "numpy>=1.24,<2.0",
+    "scipy>=1.10",
+    "scikit-learn>=1.3",
+    "torch>=2.0",
+    "pennylane>=0.34",
+    "pyyaml>=6.0",
+    "pandas>=2.0",
+    "matplotlib>=3.7",
+    "PyWavelets>=1.4",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4",
+    "pytest-cov>=4.1",
+]
+
+[project.scripts]
+eeg-qgan-run = "eeg_qgan.experiments.runner:main"
+eeg-qgan-analyze = "eeg_qgan.analysis.summarize:main"
+
+[tool.setuptools.packages.find]
+include = ["eeg_qgan*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+filterwarnings = ["ignore::DeprecationWarning"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"

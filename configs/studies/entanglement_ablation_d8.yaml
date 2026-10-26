@@ -1,0 +1,65 @@
+# R2.2 — the entanglement ablation that decides claim C4.
+#
+# The d=32 and d=64 versions of this ablation are not a clean test of entanglement.
+# At latent_dim 64 with n_qubits 8 the arm is a 128-parameter circuit followed by a
+# 576-parameter Linear(8 -> 64) + Tanh: 82% of the trainable parameters sit in a
+# classical mixing readout placed after the measurement. That readout can manufacture
+# cross-coordinate dependence no matter what the circuit does, so "product" and "ring"
+# are not actually being compared on their ability to create dependence.
+#
+# At latent_dim 8 with n_qubits 8 the expansion disappears. The generator is 128
+# parameters, all of them in the circuit, and the readout is the bare Pauli-Z vector.
+# Under that configuration the product arm really is eight independent scalar maps and
+# the topology comparison means what it says.
+#
+# Whitening is off (latent_transform: identity), per R0.2.
+#
+# On the gate: an 8-dimensional bottleneck reconstructs 22 x 256 windows far worse than
+# the 64-dimensional one (0.544 at d=64, ~0.61 at d=32). The gate exists to catch a
+# decoder that has learned nothing, which shows up as NMSE at or above 1.0, so it is set
+# to 0.95 here rather than 0.55. This is a deliberate, documented relaxation for one
+# study and it must be stated wherever these numbers appear: the d=8 representation does
+# not reconstruct well, so this study speaks about the *latent* distribution only.
+# Decoded and downstream readings from it would be exactly the vacuous comparison that
+# claim C6 warns against, which is why skip_downstream stays true.
+#
+# Submit:
+#   python scripts/narval/submit.py entanglement_ablation_d8 --split-by seed --no-gpu \
+#     --set output_root=$SCRATCH/eeg_qgan_results_r2
+
+extends: capacity_rematch
+
+n_seeds: 2
+n_folds: 2
+
+latent_dim: 8
+n_qubits: 8
+latent_transform: identity
+noise_dim: latent
+
+generator_arms:
+  - quantum_none
+  - quantum_linear
+  - quantum_ring
+  - quantum_full
+  - classical_equiv
+
+quantum:
+  n_layers: 4
+  measure_entanglement: true
+  measure_coupling: true
+  entanglement_samples: 512
+  coupling_probes: 64
+
+autoencoder:
+  arch: v2
+  widths: [128, 256, 256]
+  epochs: 600
+  patience: 60
+  # See the header. 0.95 catches a dead decoder; it does not certify a good one.
+  max_nmse: 0.95
+  on_gate_failure: raise
+
+# Representational question only. A decoder this weak cannot support a decoded or
+# downstream claim (C6).
+skip_downstream: true

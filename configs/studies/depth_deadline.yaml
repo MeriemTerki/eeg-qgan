@@ -1,0 +1,13 @@
+# Depth L2 on the current architecture. L4 already finished as depth_ablation
+# with the same PIN. Do not submit the old depth_ablation.yaml (n_folds: 5, 600-ep).
+
+extends: canonical_deadline
+
+quantum:
+  n_layers: 2
+  entanglement: ring
+
+generator_arms:
+  - quantum
+  - classical_equiv
+  - fourier

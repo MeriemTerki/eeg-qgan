@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>SeizureEEG · Live fold evaluation</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/static/styles.css" />
+</head>
+<body>
+  <header class="top">
+    <div class="brand">
+      <h1>SeizureEEG</h1>
+      <p class="lede">Capacity-matched latent rematch of a hybrid Style-qGAN on TUH-SZ</p>
+    </div>
+    <div class="meta-strip" aria-label="Session">
+      <div><span>Weights</span><strong id="weight-source">—</strong></div>
+      <div><span>Data</span><strong id="data-source">—</strong></div>
+      <div><span>Montage</span><strong>TCP 22 · 200 Hz</strong></div>
+    </div>
+  </header>
+
+  <div class="protocol" id="protocol">
+    <span><b>Live panel</b> inference on saved fold checkpoints</span>
+    <span><b>Primary claim</b> Hybrid vs Twin under matched capacity (~704 vs 709)</span>
+    <span><b>Manuscript</b> pooled campaign metrics (not duplicated here as live)</span>
+  </div>
+
+  <main class="shell">
+    <aside class="rail">
+      <section class="rail-block">
+        <h2>Holdout windows</h2>
+        <p class="hint">Ictal only · display &amp; detector call</p>
+        <div id="sample-list" class="sample-list"></div>
+      </section>
+
+      <section class="rail-block">
+        <h2>Live run</h2>
+        <label class="field">Seed
+          <input id="seed" type="number" value="42" />
+        </label>
+        <label class="field">Sample size (codes)
+          <input id="n-codes" type="number" value="256" min="9" max="1024" />
+        </label>
+        <button id="btn-live" class="primary" type="button">Run rematch</button>
+        <p class="status" id="run-status">Ready</p>
+      </section>
+
+      <section class="rail-block models">
+        <h2>Models</h2>
+        <ul class="model-list">
+          <li><b>Hybrid</b><span>704 · under test</span></li>
+          <li><b>Twin</b><span>709 · matched peer</span></li>
+          <li><b>GMM</b><span>~17k · density ref.</span></li>
+        </ul>
+      </section>
+    </aside>
+
+    <section class="workspace">
+      <nav class="tabs" role="tablist">
+        <button type="button" class="tab on" data-tab="gen">Generation</button>
+        <button type="button" class="tab" data-tab="detect">Detection</button>
+        <button type="button" class="tab" data-tab="eeg">Signals</button>
+      </nav>
+      <p class="tab-scope" id="tab-scope">Live capacity rematch · latent MMD² primary</p>
+
+      <div class="panel on" id="panel-gen">
+        <div class="run-meta" id="run-meta" hidden>
+          <div><span>Seed</span><strong id="run-seed">—</strong></div>
+          <div><span>Codes</span><strong id="run-codes">—</strong></div>
+          <div><span>Reference</span><strong>Fold holdout codes</strong></div>
+          <div><span>Twin / Hybrid MMD²</span><strong id="run-ratio">—</strong></div>
+        </div>
+
+        <div class="split">
+          <article class="result-card accent">
+            <header>
+              <h3>Capacity rematch</h3>
+              <span class="tag">704 vs 709</span>
+            </header>
+            <p class="metric-sub">Live latent MMD² vs fold holdout codes · lower is closer</p>
+            <div class="race" id="gen-simple-cards">
+              <p class="empty">Run rematch</p>
+            </div>
+            <p class="match" id="gen-verdict"></p>
+            <p class="metric-sub" id="gen-callout"></p>
+          </article>
+
+          <article class="result-card">
+            <header>
+              <h3>GMM reference</h3>
+              <span class="tag soft">Unequal budget</span>
+            </header>
+            <p class="match" id="gmm-verdict">—</p>
+            <p class="metric-sub" id="gmm-callout"></p>
+            <div class="table-wrap compact">
+              <table id="gmm-table">
+                <thead>
+                  <tr>
+                    <th>Model</th><th>Params</th><th>ms</th>
+                    <th>MMD²</th><th>W₁</th><th>Autocorr</th><th>Spectral</th>
+                  </tr>
+                </thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </article>
+        </div>
+
+        <article class="result-card full">
+          <header>
+            <h3>Decoded distances</h3>
+            <span class="tag soft">Secondary</span>
+          </header>
+          <p class="metric-sub table-note" id="decoded-note">
+            Rematch ranking uses latent MMD² only. W₁ / Autocorr / Spectral are supporting distances and may disagree.
+          </p>
+          <div class="table-wrap">
+            <table id="gen-table">
+              <thead>
+                <tr>
+                  <th>Model</th>
+                  <th>Params</th>
+                  <th>Latency (ms)</th>
+                  <th class="primary-col">MMD² ↓</th>
+                  <th>W₁ ↓</th>
+                  <th>Autocorr ↓</th>
+                  <th>Spectral ↓</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </article>
+
+        <article class="result-card full glossary">
+          <header>
+            <h3>Metric definitions</h3>
+          </header>
+          <dl class="metric-defs">
+            <div><dt>MMD²</dt><dd>Latent distribution distance to real holdout codes (primary rematch score)</dd></div>
+            <div><dt>W₁</dt><dd>Sliced Wasserstein distance in decoded EEG space</dd></div>
+            <div><dt>Autocorr</dt><dd>Autocorrelation mismatch of decoded signals</dd></div>
+            <div><dt>Spectral</dt><dd>Band-power spectral error of decoded signals</dd></div>
+            <div><dt>Latency</dt><dd>Time to generate the live batch on this machine</dd></div>
+          </dl>
+        </article>
+      </div>
+
+      <div class="panel" id="panel-detect">
+        <article class="result-card detect-focus">
+          <header>
+            <h3>Detector call on selected window</h3>
+            <span class="tag">Real EEG</span>
+          </header>
+          <p class="metric-sub scope-line">Single real ictal clip · demonstrates the detector pipeline · not holdout AUROC</p>
+          <div class="metric-row">
+            <div>
+              <span class="k">Baseline detector</span>
+              <strong id="call-label" class="decision">—</strong>
+            </div>
+            <div>
+              <span class="k">Ground truth</span>
+              <strong id="truth-label" class="decision muted-dec">—</strong>
+            </div>
+          </div>
+          <div class="detect-stats" id="detect-stats" hidden>
+            <div><span>Probability</span><strong id="stat-p">—</strong></div>
+            <div><span>Threshold</span><strong id="stat-thr">—</strong></div>
+            <div><span>Clip length</span><strong id="stat-len">—</strong></div>
+          </div>
+          <p class="metric-sub" id="call-meta">Select a window</p>
+          <p class="metric-sub" id="truth-meta" hidden></p>
+          <p class="match" id="real-call-note"></p>
+        </article>
+      </div>
+
+      <div class="panel" id="panel-eeg">
+        <article class="result-card full">
+          <header class="eeg-head">
+            <div>
+              <h3>Waveform inspection</h3>
+              <p class="metric-sub" id="eeg-caption">Qualitative · Real = selected window · Generated = unconditional</p>
+            </div>
+            <div class="eeg-tools">
+              <label>Gain <input id="eeg-gain" type="range" min="1" max="8" step="0.5" value="3" /></label>
+              <label class="check"><input id="eeg-all" type="checkbox" /> 22 ch</label>
+              <label class="check"><input id="eeg-overlay" type="checkbox" /> Overlay</label>
+              <label class="check"><input id="show-real" type="checkbox" checked /> Real</label>
+              <label class="check"><input id="show-quantum" type="checkbox" checked /> Hybrid</label>
+              <label class="check"><input id="show-twin" type="checkbox" checked /> Twin</label>
+              <label class="check"><input id="show-gmm" type="checkbox" /> GMM</label>
+            </div>
+          </header>
+          <div class="eeg-legend" id="eeg-legend"></div>
+          <canvas id="eeg" width="1200" height="520"></canvas>
+        </article>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    Meriem Terki · Hybrid latent Style-qGAN for multichannel seizure EEG · No quantum advantage claimed · Not a medical device
+  </footer>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

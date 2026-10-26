@@ -1,0 +1,23 @@
+# Is the result an artefact of critic capacity?
+#
+# The critic carried roughly 33000 parameters against the generator's 128, a ratio of
+# about 260 to 1. Under WGAN-GP the critic approximates a supremum, so a large critic is
+# defensible, but the choice was never stated and never varied, and it is a plausible
+# reason why no generator can win. Run this study at several widths to turn the
+# assumption into evidence. Override with:
+#
+#   --config configs/studies/critic_width.yaml  (then edit critic.hidden per submission)
+
+extends: capacity_rematch
+
+n_seeds: 2
+n_folds: 5
+
+critic:
+  hidden: [16, 16]
+
+generator_arms:
+  - quantum
+  - classical_equiv
+
+skip_downstream: true

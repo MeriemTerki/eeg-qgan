@@ -1,0 +1,34 @@
+# Does entanglement matter? All four topologies at identical parameter counts.
+#
+# Only the controlled-Z wiring changes, so capacity is constant and any difference is
+# attributable to connectivity. The product topology is the key control: it is
+# analytically separable, so it cannot represent cross-coordinate dependence at all.
+#
+# The earlier run reported no relationship between entanglement and cross-channel
+# fidelity, but the cross-channel measure it used averaged a signed difference, which
+# returns zero when errors of opposite sign cancel. That measure is now absolute and
+# off-diagonal, and the coupling diagnostic is recorded per arm, so the claim is
+# testable rather than asserted.
+
+extends: capacity_rematch
+
+n_seeds: 2
+n_folds: 5
+
+generator_arms:
+  - quantum_none
+  - quantum_linear
+  - quantum_ring
+  - quantum_full
+  - classical_equiv
+
+quantum:
+  n_layers: 4
+  measure_entanglement: true
+  measure_coupling: true
+  entanglement_samples: 512
+  coupling_probes: 64
+
+# Fidelity only: the question is representational, and the detector adds a long run for
+# no bearing on it.
+skip_downstream: true

@@ -1,0 +1,7 @@
+# Job scripts are executed by bash on Narval, so they must keep Unix line endings even
+# when the repository is edited on Windows. A CRLF here makes SLURM fail with an
+# unhelpful "bad interpreter" error.
+*.sh text eol=lf
+*.py text eol=lf
+*.yaml text eol=lf
+*.md text eol=lf

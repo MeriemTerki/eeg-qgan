@@ -1,0 +1,88 @@
+# Does quantum-generated augmentation move detection under the *clinical* protocol?
+#
+# clinical_ceiling_v2 establishes how high real-only detection goes on 10.24 s clips.
+# This study asks the paper's actual downstream question on top of that ceiling: when
+# the detector is strong and the input is clinically shaped, does synthetic data from
+# the quantum arm help more than synthetic data from its capacity-matched twin?
+#
+# The generative half is unchanged from capacity_rematch — 1.28 s windows, same AE,
+# same latent transform, same three-way split. Only the detector input changes: decoded
+# short windows are packed into clips of the same length as the real ones, so real and
+# synthetic reach the detector through the same transform.
+#
+# Read the answer as a *paired difference against the shared real-only baseline*, arm by
+# arm, with the fold-clustered interval. The absolute AUROC belongs to the protocol, not
+# to the generator.
+#
+# Note on normalize_scope: this study uses 'recording', which changes the AE input, so
+# its latent MMD numbers are NOT comparable to the ae_v5c campaign. That is the intended
+# trade: ae_v5c owns the generative leaderboard, this study owns the downstream claim.
+#
+# Submit:
+#   python scripts/narval/submit.py clinical_transfer_v2 --split-by seed-fold --no-gpu \
+#     --set output_root=$SCRATCH/eeg_qgan_results_clinical_v2
+
+extends: capacity_rematch
+
+n_seeds: 2
+n_folds: 2
+
+generator_arms:
+  - quantum
+  - classical_equiv
+  - gmm
+
+data:
+  normalize_scope: recording
+  max_segments_per_batch: 800
+
+clinical:
+  enabled: true
+  detector_only: false
+  clip_windows: 8
+  clip_stride: 4
+  label_mode: any
+  require_contiguous: true
+  n_fft: 128
+  hop_length: 64
+  # Real clips are contiguous recording; synthetic clips are packed windows. Without a
+  # crossfade the seams are a free label for the detector, and the augmentation contrast
+  # would measure seam detection rather than sample quality.
+  synthetic_crossfade: 32
+
+# 8192 short windows pack into 1024 clips at clip_windows: 8, which is a real dose
+# against the clip-level training set rather than a rounding error.
+n_synthetic: 8192
+
+augmentation:
+  dose_mode: fixed
+  dose_count: 8192
+  max_add: 12000
+  max_shortfall_fraction: 0.05
+
+detector:
+  kind: stft_bilstm
+  conv_channels: [32, 64, 128]
+  proj_dim: 256
+  lstm_hidden: 128
+  lstm_layers: 2
+  head_hidden: 256
+  n_fft: 128
+  hop_length: 64
+  dropout: 0.3
+  use_spectral: true
+  epochs: 80
+  patience: 15
+  batch_size: 32
+  lr: 0.0003
+  early_stop_metric: auprc
+  threshold_metric: mcc
+  balanced_batches: true
+  oversample_positives: false
+  window_augment: true
+  augment_time_shift: 64
+  augment_scale: 0.0
+  augment_channel_dropout: 0.05
+  augment_noise_std: 0.01
+
+skip_downstream: false

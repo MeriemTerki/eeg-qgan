@@ -1,0 +1,64 @@
+# Fast detector boost check under the honest predefined TUH split.
+# Cheap generator (GMM): this run is about absolute clinical metrics + dose plumbing.
+#
+# Rematch ae_v5c (previous detector): baseline AUROC≈0.71 AUPRC≈0.22 F1≈0.25
+# Target after detector boost (still E1 — do NOT restore leaky 0.74 F1):
+#   AUROC ≥ 0.78, AUPRC ≥ 0.30, MCC ≥ 0.25 on the eval-like holdout mean.
+# Lead the thesis with AUROC / AUPRC / MCC / ECE; F1 is secondary under ~5% positives.
+
+extends: capacity_rematch
+
+n_seeds: 1
+n_folds: 2
+
+data:
+  max_segments_per_batch: 200
+
+generator_arms:
+  - gmm
+
+n_synthetic: 8192
+
+training:
+  generator_steps: 50
+  batch_size: 128
+
+autoencoder:
+  arch: v2
+  widths: [128, 256, 256]
+  # Probe only: rematch already cleared AE ~0.25 NMSE. Keep AE short so the
+  #  detector boost is what the walltime pays for (2 folds + strong detector).
+  epochs: 120
+  patience: 25
+  lr_schedule: cosine
+  stft_weight: 0.1
+  max_train_windows: 16384
+  on_gate_failure: exclude
+  max_nmse: 0.55
+  log_every_epochs: 10
+
+detector:
+  kind: cnn_bilstm_v2
+  conv_widths: [96, 192, 384]
+  blocks_per_stage: 2
+  lstm_hidden: 192
+  lstm_layers: 2
+  head_hidden: 256
+  use_spectral: true
+  epochs: 80
+  patience: 15
+  lr: 0.0003
+  early_stop_metric: auprc
+  threshold_metric: mcc
+  balanced_batches: true
+  oversample_positives: false
+  window_augment: true
+  ema_decay: 0.999
+
+augmentation:
+  dose_mode: fixed
+  dose_count: 8192
+  max_add: 12000
+  max_shortfall_fraction: 0.05
+
+skip_downstream: false

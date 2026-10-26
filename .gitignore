@@ -1,0 +1,37 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+.env
+.env.*
+
+# Local data, checkpoints, and run outputs (not source)
+data/
+results/
+figures/
+logs/
+demo/artifacts/
+demo/samples/
+*.pt
+*.pth
+*.npy
+*.npz
+*.h5
+*.ckpt
+
+# Editors and OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+*.log
+
+eeg_qgan.zip
+*.zip
+

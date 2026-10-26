@@ -1,0 +1,23 @@
+# Four qubits and a four-dimensional latent: the all-quantum configuration.
+#
+# Worth keeping separate because at latent_dim 4 with 4 qubits the generator has no
+# classical expansion layer, so it is genuinely pure quantum. The wider configurations
+# put a dense layer after the readout. Reconstruction at dim 4 is hard; if the AE gate
+# fails the fold is excluded rather than poisoning decoded metrics.
+
+extends: capacity_rematch
+
+latent_dim: 4
+n_qubits: 4
+
+n_seeds: 3
+n_folds: 2
+
+quantum:
+  n_layers: 4
+  entanglement: ring
+
+autoencoder:
+  on_gate_failure: exclude
+  # Align with fleet gate; dim-4 reconstruction is still hard — exclude failures.
+  max_nmse: 0.55

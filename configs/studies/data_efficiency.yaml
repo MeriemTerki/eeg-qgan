@@ -1,0 +1,38 @@
+# Does the quantum arm hold up when seizure data is scarce?
+#
+# This is the strongest motivation for a quantum generator: a low-parameter model might
+# be preferable when there is little to fit. Replaces the three separate dataeff_25,
+# dataeff_50 and dataeff_100 directories, whose code was identical to the main repo.
+#
+# Set the fraction on the command line so one config covers every level:
+#   python -m eeg_qgan.experiments.runner data_efficiency --arms quantum classical_equiv
+# and vary latent.train_fraction through an overlay or a launcher loop.
+
+extends: capacity_rematch
+
+n_seeds: 3
+n_folds: 2
+
+latent:
+  select_size: 0.15
+  report_size: 0.15
+  # Fraction of the available seizure codes the generator is fitted on. The reporting
+  # split is never reduced, so the measurement stays equally precise at every level and
+  # only the training data varies. Wired in runner.py via subsample_codes.
+  train_fraction: 1.0
+
+generator_arms:
+  - quantum
+  - classical_equiv
+  - gmm
+
+n_synthetic: 200
+
+augmentation:
+  dose_mode: fixed
+  # A fixed dose across levels, because a proportional dose confounds the amount of
+  # training data with the amount of injected data.
+  dose_count: 200
+  max_add: 200
+  max_shortfall_fraction: 0.05
+  quality_gate: false

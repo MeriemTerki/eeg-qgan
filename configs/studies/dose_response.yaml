@@ -1,0 +1,31 @@
+# How much synthetic data is needed before the detector responds at all?
+#
+# Use an explicit fixed dose. Do not use dose_mode: balance here — that request
+# is tens of thousands of windows under TUH and was silently capped in ae_v5b.
+#
+# Sweep by re-submitting with overlays, e.g.:
+#   n_synthetic=512  augmentation.dose_count=512
+#   n_synthetic=2048 augmentation.dose_count=2048
+#   n_synthetic=8192 augmentation.dose_count=8192
+
+extends: capacity_rematch
+
+n_seeds: 2
+n_folds: 2
+
+generator_arms:
+  - quantum
+  - classical_equiv
+  - gmm
+
+n_synthetic: 8192
+
+augmentation:
+  dose_mode: fixed
+  dose_count: 8192
+  max_add: 12000
+  quality_gate: false
+  max_shortfall_fraction: 0.05
+  # Must be 0 for the dose curve: the 512 / 2048 points are intentionally small
+  # relative to the real-positive count. A floor of 0.1 would abort those arms.
+  min_dose_fraction: 0.0
